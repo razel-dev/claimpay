@@ -14,4 +14,18 @@ contract ClaimPay {
         Paid,
         Rejected
     }
+
+    struct Milestone {
+        string description;
+        uint256 amount;
+        MilestoneStatus status;
+    }
+
+    struct Agreement {
+        address client;
+        address provider;
+        address arbiter;
+        AgreementStatus status;
+        Milestone[] milestones;
+    }
 }
