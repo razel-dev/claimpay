@@ -5,6 +5,7 @@ contract ClaimPay {
     error InvalidProvider();
     error InvalidArbiter();
     error EmptyMilestones();
+    error MilestoneDataMismatch();
 
     enum AgreementStatus {
         Active,
@@ -50,6 +51,9 @@ contract ClaimPay {
         }
         if (descriptions.length == 0) {
             revert EmptyMilestones();
+        }
+        if (descriptions.length != amounts.length) {
+            revert MilestoneDataMismatch();
         }
     }
 }
