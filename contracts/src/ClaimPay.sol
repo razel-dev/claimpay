@@ -70,5 +70,10 @@ contract ClaimPay {
         agreementId = agreementCount;
 
         Agreement storage agreement = _agreements[agreementId];
+
+        agreement.client = msg.sender;
+        agreement.provider = provider;
+        agreement.arbiter = arbiter;
+        agreement.status = AgreementStatus.Active;
     }
 }
