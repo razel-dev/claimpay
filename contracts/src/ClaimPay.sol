@@ -31,4 +31,11 @@ contract ClaimPay {
 
     uint256 public agreementCount;
     mapping(uint256 => Agreement) private _agreements;
+
+    function createAgreement(
+        address provider,
+        address arbiter,
+        string[] calldata descriptions,
+        uint256[] calldata amounts
+    ) external returns (uint256 agreementId) {}
 }
