@@ -3,6 +3,7 @@ pragma solidity ^0.8.35;
 
 contract ClaimPay {
     error InvalidProvider();
+    error InvalidArbiter();
 
     enum AgreementStatus {
         Active,
@@ -42,6 +43,9 @@ contract ClaimPay {
     ) external returns (uint256 agreementId) {
         if (provider == address(0) || provider == msg.sender) {
             revert InvalidProvider();
+        }
+        if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider)) {
+            revert InvalidArbiter();
         }
     }
 }
