@@ -65,5 +65,10 @@ contract ClaimPay {
                 revert InvalidMilestoneAmount(i);
             }
         }
+
+        agreementCount++;
+        agreementId = agreementCount;
+
+        Agreement storage agreement = _agreements[agreementId];
     }
 }
