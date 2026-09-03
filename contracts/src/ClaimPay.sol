@@ -28,4 +28,7 @@ contract ClaimPay {
         AgreementStatus status;
         Milestone[] milestones;
     }
+
+    uint256 public agreementCount;
+    mapping(uint256 => Agreement) private _agreements;
 }
