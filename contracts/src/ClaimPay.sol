@@ -7,6 +7,7 @@ contract ClaimPay {
     error EmptyMilestones();
     error MilestoneDataMismatch();
     error EmptyMilestoneDescription(uint256 index);
+    error InvalidMilestoneAmount(uint256 index);
 
     enum AgreementStatus {
         Active,
@@ -59,6 +60,9 @@ contract ClaimPay {
         for (uint256 i; i < descriptions.length; ++i) {
             if (bytes(descriptions[i]).length == 0) {
                 revert EmptyMilestoneDescription(i);
+            }
+            if (amounts[i] == 0) {
+                revert InvalidMilestoneAmount(i);
             }
         }
     }
