@@ -2,6 +2,8 @@
 pragma solidity ^0.8.35;
 
 contract ClaimPay {
+    error InvalidProvider();
+
     enum AgreementStatus {
         Active,
         Completed
@@ -37,5 +39,9 @@ contract ClaimPay {
         address arbiter,
         string[] calldata descriptions,
         uint256[] calldata amounts
-    ) external returns (uint256 agreementId) {}
+    ) external returns (uint256 agreementId) {
+        if (provider == address(0) || provider == msg.sender) {
+            revert InvalidProvider();
+        }
+    }
 }
