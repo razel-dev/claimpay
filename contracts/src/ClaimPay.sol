@@ -4,6 +4,7 @@ pragma solidity ^0.8.35;
 contract ClaimPay {
     error InvalidProvider();
     error InvalidArbiter();
+    error EmptyMilestones();
 
     enum AgreementStatus {
         Active,
@@ -46,6 +47,9 @@ contract ClaimPay {
         }
         if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider)) {
             revert InvalidArbiter();
+        }
+        if (descriptions.length == 0) {
+            revert EmptyMilestones();
         }
     }
 }
