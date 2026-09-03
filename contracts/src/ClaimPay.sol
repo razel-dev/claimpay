@@ -75,5 +75,10 @@ contract ClaimPay {
         agreement.provider = provider;
         agreement.arbiter = arbiter;
         agreement.status = AgreementStatus.Active;
+
+        for (uint256 i; i < descriptions.length; ++i) {
+            agreement.milestones
+                .push(Milestone({description: descriptions[i], amount: amounts[i], status: MilestoneStatus.Pending}));
+        }
     }
 }
