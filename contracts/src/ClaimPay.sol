@@ -9,6 +9,7 @@ contract ClaimPay {
     error EmptyMilestoneDescription(uint256 index);
     error InvalidMilestoneAmount(uint256 index);
     error AgreementNotFound(uint256 agreementId);
+    error MilestoneNotFound(uint256 agreementId, uint256 milestoneIndex);
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -103,5 +104,21 @@ contract ClaimPay {
         }
         Agreement storage agreement = _agreements[agreementId];
         return (agreement.client, agreement.provider, agreement.arbiter, agreement.status, agreement.milestones.length);
+    }
+
+    function getMilestone(uint256 agreementId, uint256 milestoneIndex)
+        external
+        view
+        returns (string memory description, uint256 amount, MilestoneStatus status)
+    {
+        if (agreementId == 0 || agreementId > agreementCount) {
+            revert AgreementNotFound(agreementId);
+        }
+        Agreement storage agreement = _agreements[agreementId];
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+        return (milestone.description, milestone.amount, milestone.status);
     }
 }
