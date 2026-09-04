@@ -88,5 +88,7 @@ contract ClaimPay {
             agreement.milestones
                 .push(Milestone({description: descriptions[i], amount: amounts[i], status: MilestoneStatus.Pending}));
         }
+
+        emit AgreementCreated(agreementId, msg.sender, provider, arbiter, descriptions.length);
     }
 }
