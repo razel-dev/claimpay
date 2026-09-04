@@ -10,5 +10,9 @@ contract ClaimPayTest is Test {
     function setUp() public {
         claimPay = new ClaimPay();
     }
+
+    function testInitialAgreementCountIsZero() public view {
+        assertEq(claimPay.agreementCount(), 0);
+    }
 }
 
