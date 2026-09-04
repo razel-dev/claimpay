@@ -89,4 +89,17 @@ contract ClaimPayTest is Test {
         assertEq(agreementId, 1);
         assertEq(claimPay.agreementCount(), 1);
     }
+
+    function testRevertWhenProviderIsZero() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.expectRevert(ClaimPay.InvalidProvider.selector);
+        vm.prank(client);
+
+        claimPay.createAgreement(address(0), arbiter, descriptions, amounts);
+    }
 }
