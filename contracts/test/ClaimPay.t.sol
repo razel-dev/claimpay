@@ -102,4 +102,17 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(address(0), arbiter, descriptions, amounts);
     }
+
+    function testRevertWhenProviderIsClient() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.expectRevert(ClaimPay.InvalidProvider.selector);
+        vm.prank(client);
+
+        claimPay.createAgreement(client, arbiter, descriptions, amounts);
+    }
 }
