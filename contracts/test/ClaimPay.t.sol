@@ -6,6 +6,9 @@ import {ClaimPay} from "../src/ClaimPay.sol";
 
 contract ClaimPayTest is Test {
     ClaimPay internal claimPay;
+    address internal client = makeAddr("client");
+    address internal provider = makeAddr("provider");
+    address internal arbiter = makeAddr("arbiter");
 
     function setUp() public {
         claimPay = new ClaimPay();
@@ -13,6 +16,20 @@ contract ClaimPayTest is Test {
 
     function testInitialAgreementCountIsZero() public view {
         assertEq(claimPay.agreementCount(), 0);
+    }
+
+    function testCreateAgreement() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.prank(client);
+
+        uint256 agreementId = claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+        assertEq(agreementId, 1);
+        assertEq(claimPay.agreementCount(), 1);
     }
 }
 
