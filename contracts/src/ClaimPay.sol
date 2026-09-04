@@ -9,6 +9,14 @@ contract ClaimPay {
     error EmptyMilestoneDescription(uint256 index);
     error InvalidMilestoneAmount(uint256 index);
 
+    event AgreementCreated(
+        uint256 indexed agreementId,
+        address indexed client,
+        address indexed provider,
+        address arbiter,
+        uint256 milestoneCount
+    );
+
     enum AgreementStatus {
         Active,
         Completed
