@@ -45,5 +45,12 @@ contract ClaimPayTest is Test {
         assertEq(storedArbiter, arbiter);
         assertEq(uint256(storedStatus), uint256(ClaimPay.AgreementStatus.Active));
         assertEq(milestoneCount, 1);
+
+        (string memory storedDescription, uint256 storedAmount, ClaimPay.MilestoneStatus storedMilestoneStatus) =
+            claimPay.getMilestone(agreementId, 0);
+
+        assertEq(storedDescription, "Maquette");
+        assertEq(storedAmount, 500);
+        assertEq(uint256(storedMilestoneStatus), uint256(ClaimPay.MilestoneStatus.Pending));
     }
 }
