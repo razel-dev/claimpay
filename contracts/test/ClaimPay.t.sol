@@ -74,4 +74,19 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
+
+    function testCreateAgreementWithoutArbiter() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.prank(client);
+
+        uint256 agreementId = claimPay.createAgreement(provider, address(0), descriptions, amounts);
+
+        assertEq(agreementId, 1);
+        assertEq(claimPay.agreementCount(), 1);
+    }
 }
