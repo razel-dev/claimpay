@@ -28,8 +28,22 @@ contract ClaimPayTest is Test {
         vm.prank(client);
 
         uint256 agreementId = claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+
         assertEq(agreementId, 1);
         assertEq(claimPay.agreementCount(), 1);
+
+        (
+            address storedClient,
+            address storedProvider,
+            address storedArbiter,
+            ClaimPay.AgreementStatus storedStatus,
+            uint256 milestoneCount
+        ) = claimPay.getAgreement(agreementId);
+
+        assertEq(storedClient, client);
+        assertEq(storedProvider, provider);
+        assertEq(storedArbiter, arbiter);
+        assertEq(uint256(storedStatus), uint256(ClaimPay.AgreementStatus.Active));
+        assertEq(milestoneCount, 1);
     }
 }
-
