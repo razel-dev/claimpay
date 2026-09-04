@@ -9,6 +9,13 @@ contract ClaimPayTest is Test {
     address internal client = makeAddr("client");
     address internal provider = makeAddr("provider");
     address internal arbiter = makeAddr("arbiter");
+    event AgreementCreated(
+        uint256 indexed agreementId,
+        address indexed client,
+        address indexed provider,
+        address arbiter,
+        uint256 milestoneCount
+    );
 
     function setUp() public {
         claimPay = new ClaimPay();
@@ -52,5 +59,19 @@ contract ClaimPayTest is Test {
         assertEq(storedDescription, "Maquette");
         assertEq(storedAmount, 500);
         assertEq(uint256(storedMilestoneStatus), uint256(ClaimPay.MilestoneStatus.Pending));
+    }
+
+    function testEmitAgreementCreated() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+        vm.expectEmit(true, true, true, true, address(claimPay));
+
+        emit AgreementCreated(1, client, provider, arbiter, 1);
+        vm.prank(client);
+
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
 }
