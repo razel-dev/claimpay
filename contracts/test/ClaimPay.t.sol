@@ -197,4 +197,10 @@ contract ClaimPayTest is Test {
 
         claimPay.getAgreement(1);
     }
+
+    function testRevertWhenGettingMilestoneFromUnknownAgreement() public {
+        vm.expectRevert(abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1));
+
+        claimPay.getMilestone(1, 0);
+    }
 }
