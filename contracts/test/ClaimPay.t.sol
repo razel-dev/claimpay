@@ -141,4 +141,14 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(provider, provider, descriptions, amounts);
     }
+
+    function testRevertWhenNoMilestones() public {
+        string[] memory descriptions = new string[](0);
+        uint256[] memory amounts = new uint256[](0);
+
+        vm.expectRevert(ClaimPay.EmptyMilestones.selector);
+        vm.prank(client);
+
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+    }
 }
