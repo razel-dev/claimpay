@@ -203,4 +203,19 @@ contract ClaimPayTest is Test {
 
         claimPay.getMilestone(1, 0);
     }
+
+    function testRevertWhenMilestoneDoesNotExist() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+
+        vm.expectRevert(abi.encodeWithSelector(ClaimPay.MilestoneNotFound.selector, agreementId, 1));
+
+        claimPay.getMilestone(agreementId, 1);
+    }
 }
