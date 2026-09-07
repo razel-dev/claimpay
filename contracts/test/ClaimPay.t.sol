@@ -191,4 +191,10 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
+
+    function testRevertWhenAgreementDoesNotExist() public {
+        vm.expectRevert(abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1));
+
+        claimPay.getAgreement(1);
+    }
 }
