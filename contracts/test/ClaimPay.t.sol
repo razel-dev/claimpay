@@ -165,4 +165,17 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
+
+    function testRevertWhenMilestoneDescriptionIsEmpty() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.expectRevert(abi.encodeWithSelector(ClaimPay.EmptyMilestoneDescription.selector, 0));
+        vm.prank(client);
+
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+    }
 }
