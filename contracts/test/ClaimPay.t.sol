@@ -151,4 +151,18 @@ contract ClaimPayTest is Test {
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
+
+    function testRevertWhenMilestoneDataLengthsMismatch() public {
+        string[] memory descriptions = new string[](2);
+        descriptions[0] = "Maquette";
+        descriptions[1] = "Developpement";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.expectRevert(ClaimPay.MilestoneDataMismatch.selector);
+        vm.prank(client);
+
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+    }
 }
