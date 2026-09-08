@@ -3,12 +3,16 @@ pragma solidity ^0.8.35;
 
 import {Test} from "forge-std/Test.sol";
 import {ClaimPay} from "../src/ClaimPay.sol";
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 
 contract ClaimPayTest is Test {
     ClaimPay internal claimPay;
+    MockUSDC internal mockUSDC;
+
     address internal client = makeAddr("client");
     address internal provider = makeAddr("provider");
     address internal arbiter = makeAddr("arbiter");
+
     event AgreementCreated(
         uint256 indexed agreementId,
         address indexed client,
@@ -18,7 +22,8 @@ contract ClaimPayTest is Test {
     );
 
     function setUp() public {
-        claimPay = new ClaimPay();
+        mockUSDC = new MockUSDC();
+        claimPay = new ClaimPay(address(mockUSDC));
     }
 
     function testInitialAgreementCountIsZero() public view {
@@ -217,5 +222,15 @@ contract ClaimPayTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ClaimPay.MilestoneNotFound.selector, agreementId, 1));
 
         claimPay.getMilestone(agreementId, 1);
+    }
+
+    function testPaymentTokenIsConfigured() public view {
+        assertEq(address(claimPay.paymentToken()), address(mockUSDC));
+    }
+
+    function testRevertWhenPaymentTokenIsZero() public {
+        vm.expectRevert(ClaimPay.InvalidPaymentToken.selector);
+
+        new ClaimPay(address(0));
     }
 }

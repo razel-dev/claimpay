@@ -14,6 +14,7 @@ contract ClaimPay {
     error InvalidMilestoneAmount(uint256 index);
     error AgreementNotFound(uint256 agreementId);
     error MilestoneNotFound(uint256 agreementId, uint256 milestoneIndex);
+    error InvalidPaymentToken();
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -50,8 +51,18 @@ contract ClaimPay {
         Milestone[] milestones;
     }
 
+    IERC20 public immutable paymentToken;
+
     uint256 public agreementCount;
     mapping(uint256 => Agreement) private _agreements;
+
+    constructor(address paymentTokenAddress) {
+        if (paymentTokenAddress == address(0)) {
+            revert InvalidPaymentToken();
+        }
+
+        paymentToken = IERC20(paymentTokenAddress);
+    }
 
     function createAgreement(
         address provider,
