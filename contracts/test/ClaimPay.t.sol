@@ -9,6 +9,8 @@ contract ClaimPayTest is Test {
     ClaimPay internal claimPay;
     MockUSDC internal mockUSDC;
 
+    uint256 internal constant CLIENT_BALANCE = 10_000 * 10 ** 6;
+
     address internal client = makeAddr("client");
     address internal provider = makeAddr("provider");
     address internal arbiter = makeAddr("arbiter");
@@ -24,6 +26,11 @@ contract ClaimPayTest is Test {
     function setUp() public {
         mockUSDC = new MockUSDC();
         claimPay = new ClaimPay(address(mockUSDC));
+
+        mockUSDC.mint(client, CLIENT_BALANCE);
+
+        vm.prank(client);
+        mockUSDC.approve(address(claimPay), CLIENT_BALANCE);
     }
 
     function testInitialAgreementCountIsZero() public view {
@@ -64,6 +71,8 @@ contract ClaimPayTest is Test {
         assertEq(storedDescription, "Maquette");
         assertEq(storedAmount, 500);
         assertEq(uint256(storedMilestoneStatus), uint256(ClaimPay.MilestoneStatus.Pending));
+        assertEq(mockUSDC.balanceOf(client), CLIENT_BALANCE - amounts[0]);
+        assertEq(mockUSDC.balanceOf(address(claimPay)), amounts[0]);
     }
 
     function testEmitAgreementCreated() public {
@@ -232,5 +241,23 @@ contract ClaimPayTest is Test {
         vm.expectRevert(ClaimPay.InvalidPaymentToken.selector);
 
         new ClaimPay(address(0));
+    }
+
+    function testCreateAgreementTransfersTotalMilestoneAmount() public {
+        string[] memory descriptions = new string[](2);
+        descriptions[0] = "Maquette";
+        descriptions[1] = "Developpement";
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 500;
+        amounts[1] = 700;
+
+        uint256 expectedTotal = amounts[0] + amounts[1];
+
+        vm.prank(client);
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+
+        assertEq(mockUSDC.balanceOf(address(claimPay)), expectedTotal);
+        assertEq(mockUSDC.balanceOf(client), CLIENT_BALANCE - expectedTotal);
     }
 }

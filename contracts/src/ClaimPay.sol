@@ -82,6 +82,9 @@ contract ClaimPay {
         if (descriptions.length != amounts.length) {
             revert MilestoneDataMismatch();
         }
+
+        uint256 totalAmount;
+
         for (uint256 i; i < descriptions.length; ++i) {
             if (bytes(descriptions[i]).length == 0) {
                 revert EmptyMilestoneDescription(i);
@@ -89,7 +92,11 @@ contract ClaimPay {
             if (amounts[i] == 0) {
                 revert InvalidMilestoneAmount(i);
             }
+
+            totalAmount += amounts[i];
         }
+
+        paymentToken.safeTransferFrom(msg.sender, address(this), totalAmount);
 
         agreementCount++;
         agreementId = agreementCount;
