@@ -4,6 +4,7 @@ pragma solidity ^0.8.35;
 import {Test} from "forge-std/Test.sol";
 import {ClaimPay} from "../src/ClaimPay.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract ClaimPayTest is Test {
     ClaimPay internal claimPay;
@@ -259,5 +260,23 @@ contract ClaimPayTest is Test {
 
         assertEq(mockUSDC.balanceOf(address(claimPay)), expectedTotal);
         assertEq(mockUSDC.balanceOf(client), CLIENT_BALANCE - expectedTotal);
+    }
+
+    function testRevertWhenAllowanceIsInsufficient() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500;
+
+        vm.prank(client);
+        mockUSDC.approve(address(claimPay), 0);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(claimPay), 0, amounts[0])
+        );
+        vm.prank(client);
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+
+        assertEq(claimPay.agreementCount(), 0);
     }
 }
