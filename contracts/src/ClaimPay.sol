@@ -46,6 +46,8 @@ contract ClaimPay {
         uint256 amount
     );
 
+    event AgreementCompleted(uint256 indexed agreementId);
+
     enum AgreementStatus {
         Active,
         Completed
@@ -181,6 +183,56 @@ contract ClaimPay {
         emit MilestoneSubmitted(agreementId, milestoneIndex, msg.sender);
     }
 
+    function approveMilestone(
+        uint256 agreementId,
+        uint256 milestoneIndex
+    ) external {
+        Agreement storage agreement = _agreements[agreementId];
+
+        if (agreement.client == address(0)) {
+            revert AgreementNotFound(agreementId);
+        }
+
+        if (msg.sender != agreement.client) {
+            revert NotAgreementClient(agreementId, msg.sender);
+        }
+
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+
+        if (milestone.status != MilestoneStatus.Submitted) {
+            revert InvalidMilestoneStatus(
+                agreementId,
+                milestoneIndex,
+                milestone.status
+            );
+        }
+
+        milestone.status = MilestoneStatus.Paid;
+
+        bool allMilestonesPaid = _allMilestonesPaid(agreement);
+
+        if (allMilestonesPaid) {
+            agreement.status = AgreementStatus.Completed;
+        }
+
+        paymentToken.safeTransfer(agreement.provider, milestone.amount);
+
+        emit MilestonePaid(
+            agreementId,
+            milestoneIndex,
+            agreement.provider,
+            milestone.amount
+        );
+
+        if (allMilestonesPaid) {
+            emit AgreementCompleted(agreementId);
+        }
+    }
+
     function getAgreement(
         uint256 agreementId
     )
@@ -205,6 +257,17 @@ contract ClaimPay {
             agreement.status,
             agreement.milestones.length
         );
+    }
+    function _allMilestonesPaid(
+        Agreement storage agreement
+    ) private view returns (bool) {
+        for (uint256 i; i < agreement.milestones.length; ++i) {
+            if (agreement.milestones[i].status != MilestoneStatus.Paid) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     function getMilestone(
