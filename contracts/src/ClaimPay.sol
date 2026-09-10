@@ -39,6 +39,13 @@ contract ClaimPay {
         address indexed provider
     );
 
+    event MilestonePaid(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed provider,
+        uint256 amount
+    );
+
     enum AgreementStatus {
         Active,
         Completed
