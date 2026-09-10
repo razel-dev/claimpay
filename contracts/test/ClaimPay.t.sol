@@ -483,9 +483,16 @@ contract ClaimPayTest is Test {
             0
         );
         assertEq(
-    uint256(storedStatus),
-    uint256(ClaimPay.MilestoneStatus.Submitted)
-);
-
-}
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Submitted)
+        );
+    }
+    function testRevertWhenSubmittingMilestoneFromUnknownAgreement() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1)
+        );
+        vm.prank(provider);
+        claimPay.submitMilestone(1, 0);
+        assertEq(claimPay.agreementCount(), 0);
+    }
 }
