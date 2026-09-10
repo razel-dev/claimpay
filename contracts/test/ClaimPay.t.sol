@@ -328,5 +328,35 @@ assertEq(
 );
 }
 
+function testRevertWhenNonProviderSubmitsMilestone() public {
+    string[] memory descriptions = new string[](1);
+    descriptions[0] = "Maquette";
+
+    uint256[] memory amounts = new uint256[](1);
+    amounts[0] = 500 * 10 ** 6;
+
+    vm.prank(client);
+    uint256 agreementId = claimPay.createAgreement(
+        provider,
+        arbiter,
+        descriptions,
+        amounts
+    );
+
+    vm.expectRevert(abi.encodeWithSelector(ClaimPay.NotAgreementProvider.selector, agreementId, client));
+    vm.prank(client);
+    claimPay.submitMilestone(agreementId, 0);
+    (
+    ,
+    ,
+    ClaimPay.MilestoneStatus storedStatus
+) = claimPay.getMilestone(agreementId, 0);
+
+assertEq(
+    uint256(storedStatus),
+    uint256(ClaimPay.MilestoneStatus.Pending)
+);
+
+}
 
 }
