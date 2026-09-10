@@ -27,6 +27,12 @@ contract ClaimPayTest is Test {
         uint256 milestoneCount
     );
 
+    event MilestoneSubmitted(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed provider
+    );
+
     function setUp() public {
         mockUSDC = new MockUSDC();
         claimPay = new ClaimPay(address(mockUSDC));
@@ -494,5 +500,27 @@ contract ClaimPayTest is Test {
         vm.prank(provider);
         claimPay.submitMilestone(1, 0);
         assertEq(claimPay.agreementCount(), 0);
+    }
+
+    function testEmitMilestoneSubmitted() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.expectEmit(true, true, true, true, address(claimPay));
+        emit MilestoneSubmitted(agreementId, 0, provider);
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
     }
 }
