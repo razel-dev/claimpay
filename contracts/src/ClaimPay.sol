@@ -23,6 +23,7 @@ contract ClaimPay {
         uint256 milestoneIndex,
         MilestoneStatus currentStatus
     );
+    error NotAgreementClient(uint256 agreementId, address caller);
 
     event AgreementCreated(
         uint256 indexed agreementId,
