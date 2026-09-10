@@ -4,7 +4,9 @@ pragma solidity ^0.8.35;
 import {Test} from "forge-std/Test.sol";
 import {ClaimPay} from "../src/ClaimPay.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
-import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {
+    IERC20Errors
+} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract ClaimPayTest is Test {
     ClaimPay internal claimPay;
@@ -48,7 +50,12 @@ contract ClaimPayTest is Test {
 
         vm.prank(client);
 
-        uint256 agreementId = claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
 
         assertEq(agreementId, 1);
         assertEq(claimPay.agreementCount(), 1);
@@ -64,15 +71,24 @@ contract ClaimPayTest is Test {
         assertEq(storedClient, client);
         assertEq(storedProvider, provider);
         assertEq(storedArbiter, arbiter);
-        assertEq(uint256(storedStatus), uint256(ClaimPay.AgreementStatus.Active));
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.AgreementStatus.Active)
+        );
         assertEq(milestoneCount, 1);
 
-        (string memory storedDescription, uint256 storedAmount, ClaimPay.MilestoneStatus storedMilestoneStatus) =
-            claimPay.getMilestone(agreementId, 0);
+        (
+            string memory storedDescription,
+            uint256 storedAmount,
+            ClaimPay.MilestoneStatus storedMilestoneStatus
+        ) = claimPay.getMilestone(agreementId, 0);
 
         assertEq(storedDescription, "Maquette");
         assertEq(storedAmount, 500);
-        assertEq(uint256(storedMilestoneStatus), uint256(ClaimPay.MilestoneStatus.Pending));
+        assertEq(
+            uint256(storedMilestoneStatus),
+            uint256(ClaimPay.MilestoneStatus.Pending)
+        );
         assertEq(mockUSDC.balanceOf(client), CLIENT_BALANCE - amounts[0]);
         assertEq(mockUSDC.balanceOf(address(claimPay)), amounts[0]);
     }
@@ -100,7 +116,12 @@ contract ClaimPayTest is Test {
 
         vm.prank(client);
 
-        uint256 agreementId = claimPay.createAgreement(provider, address(0), descriptions, amounts);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            address(0),
+            descriptions,
+            amounts
+        );
 
         assertEq(agreementId, 1);
         assertEq(claimPay.agreementCount(), 1);
@@ -189,7 +210,12 @@ contract ClaimPayTest is Test {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 500;
 
-        vm.expectRevert(abi.encodeWithSelector(ClaimPay.EmptyMilestoneDescription.selector, 0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.EmptyMilestoneDescription.selector,
+                0
+            )
+        );
         vm.prank(client);
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
@@ -202,20 +228,26 @@ contract ClaimPayTest is Test {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 0;
 
-        vm.expectRevert(abi.encodeWithSelector(ClaimPay.InvalidMilestoneAmount.selector, 0));
+        vm.expectRevert(
+            abi.encodeWithSelector(ClaimPay.InvalidMilestoneAmount.selector, 0)
+        );
         vm.prank(client);
 
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
     }
 
     function testRevertWhenAgreementDoesNotExist() public {
-        vm.expectRevert(abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1)
+        );
 
         claimPay.getAgreement(1);
     }
 
     function testRevertWhenGettingMilestoneFromUnknownAgreement() public {
-        vm.expectRevert(abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1)
+        );
 
         claimPay.getMilestone(1, 0);
     }
@@ -228,9 +260,20 @@ contract ClaimPayTest is Test {
         amounts[0] = 500;
 
         vm.prank(client);
-        uint256 agreementId = claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
 
-        vm.expectRevert(abi.encodeWithSelector(ClaimPay.MilestoneNotFound.selector, agreementId, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.MilestoneNotFound.selector,
+                agreementId,
+                1
+            )
+        );
 
         claimPay.getMilestone(agreementId, 1);
     }
@@ -273,7 +316,12 @@ contract ClaimPayTest is Test {
         vm.prank(client);
         mockUSDC.approve(address(claimPay), 0);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(claimPay), 0, amounts[0])
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector,
+                address(claimPay),
+                0,
+                amounts[0]
+            )
         );
         vm.prank(client);
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
@@ -291,7 +339,12 @@ contract ClaimPayTest is Test {
         vm.prank(unfundedClient);
         mockUSDC.approve(address(claimPay), amounts[0]);
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, unfundedClient, 0, amounts[0])
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientBalance.selector,
+                unfundedClient,
+                0,
+                amounts[0]
+            )
         );
         vm.prank(unfundedClient);
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
@@ -300,63 +353,100 @@ contract ClaimPayTest is Test {
     }
 
     function testProviderCanSubmitMilestone() public {
-    string[] memory descriptions = new string[](1);
-descriptions[0] = "Maquette";
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
 
-uint256[] memory amounts = new uint256[](1);
-amounts[0] = 500 * 10 ** 6;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
 
-vm.prank(client);
-uint256 agreementId = claimPay.createAgreement(
-    provider,
-    arbiter,
-    descriptions,
-    amounts
-);
-vm.prank(provider);
-claimPay.submitMilestone(agreementId, 0);
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
 
-(
-    ,
-    ,
-    ClaimPay.MilestoneStatus storedStatus
-) = claimPay.getMilestone(agreementId, 0);
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
 
-assertEq(
-    uint256(storedStatus),
-    uint256(ClaimPay.MilestoneStatus.Submitted)
-);
-}
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Submitted)
+        );
+    }
 
-function testRevertWhenNonProviderSubmitsMilestone() public {
-    string[] memory descriptions = new string[](1);
-    descriptions[0] = "Maquette";
+    function testRevertWhenNonProviderSubmitsMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
 
-    uint256[] memory amounts = new uint256[](1);
-    amounts[0] = 500 * 10 ** 6;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
 
-    vm.prank(client);
-    uint256 agreementId = claimPay.createAgreement(
-        provider,
-        arbiter,
-        descriptions,
-        amounts
-    );
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
 
-    vm.expectRevert(abi.encodeWithSelector(ClaimPay.NotAgreementProvider.selector, agreementId, client));
-    vm.prank(client);
-    claimPay.submitMilestone(agreementId, 0);
-    (
-    ,
-    ,
-    ClaimPay.MilestoneStatus storedStatus
-) = claimPay.getMilestone(agreementId, 0);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.NotAgreementProvider.selector,
+                agreementId,
+                client
+            )
+        );
+        vm.prank(client);
+        claimPay.submitMilestone(agreementId, 0);
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
 
-assertEq(
-    uint256(storedStatus),
-    uint256(ClaimPay.MilestoneStatus.Pending)
-);
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Pending)
+        );
+    }
 
-}
+    function testRevertWhenSubmittingMilestoneDoesNotExist() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
 
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.MilestoneNotFound.selector,
+                agreementId,
+                1
+            )
+        );
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 1);
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Pending)
+        );
+    }
 }
