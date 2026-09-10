@@ -449,4 +449,43 @@ contract ClaimPayTest is Test {
             uint256(ClaimPay.MilestoneStatus.Pending)
         );
     }
+
+    function testRevertWhenSubmittingMilestoneTwice() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.InvalidMilestoneStatus.selector,
+                agreementId,
+                0,
+                ClaimPay.MilestoneStatus.Submitted
+            )
+        );
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+        assertEq(
+    uint256(storedStatus),
+    uint256(ClaimPay.MilestoneStatus.Submitted)
+);
+
+}
 }
