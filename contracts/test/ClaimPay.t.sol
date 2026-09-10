@@ -523,4 +523,62 @@ contract ClaimPayTest is Test {
         vm.prank(provider);
         claimPay.submitMilestone(agreementId, 0);
     }
+
+    function testClientCanApproveSubmittedMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        uint256 providerBalanceBefore = mockUSDC.balanceOf(provider);
+        uint256 claimPayBalanceBefore = mockUSDC.balanceOf(address(claimPay));
+
+        vm.prank(client);
+        claimPay.approveMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus storedMilestoneStatus) = claimPay
+            .getMilestone(agreementId, 0);
+
+        (
+            ,
+            ,
+            ,
+            ClaimPay.AgreementStatus storedAgreementStatus,
+            uint256 milestoneCount
+        ) = claimPay.getAgreement(agreementId);
+
+        assertEq(
+            uint256(storedMilestoneStatus),
+            uint256(ClaimPay.MilestoneStatus.Paid)
+        );
+
+        assertEq(
+            uint256(storedAgreementStatus),
+            uint256(ClaimPay.AgreementStatus.Completed)
+        );
+
+        assertEq(milestoneCount, 1);
+
+        assertEq(
+            mockUSDC.balanceOf(provider),
+            providerBalanceBefore + amounts[0]
+        );
+
+        assertEq(
+            mockUSDC.balanceOf(address(claimPay)),
+            claimPayBalanceBefore - amounts[0]
+        );
+    }
 }
