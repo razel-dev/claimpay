@@ -2,7 +2,9 @@
 pragma solidity ^0.8.35;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ClaimPay {
     using SafeERC20 for IERC20;
@@ -17,10 +19,10 @@ contract ClaimPay {
     error InvalidPaymentToken();
     error NotAgreementProvider(uint256 agreementId, address caller);
     error InvalidMilestoneStatus(
-    uint256 agreementId,
-    uint256 milestoneIndex,
-    MilestoneStatus currentStatus
-);
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        MilestoneStatus currentStatus
+    );
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -31,10 +33,10 @@ contract ClaimPay {
     );
 
     event MilestoneSubmitted(
-    uint256 indexed agreementId,
-    uint256 indexed milestoneIndex,
-    address indexed provider
-);
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed provider
+    );
 
     enum AgreementStatus {
         Active,
@@ -85,7 +87,10 @@ contract ClaimPay {
         if (provider == address(0) || provider == msg.sender) {
             revert InvalidProvider();
         }
-        if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider)) {
+        if (
+            arbiter != address(0) &&
+            (arbiter == msg.sender || arbiter == provider)
+        ) {
             revert InvalidArbiter();
         }
         if (descriptions.length == 0) {
@@ -121,19 +126,32 @@ contract ClaimPay {
         agreement.status = AgreementStatus.Active;
 
         for (uint256 i; i < descriptions.length; ++i) {
-            agreement.milestones
-                .push(Milestone({description: descriptions[i], amount: amounts[i], status: MilestoneStatus.Pending}));
+            agreement.milestones.push(
+                Milestone({
+                    description: descriptions[i],
+                    amount: amounts[i],
+                    status: MilestoneStatus.Pending
+                })
+            );
         }
 
-        emit AgreementCreated(agreementId, msg.sender, provider, arbiter, descriptions.length);
+        emit AgreementCreated(
+            agreementId,
+            msg.sender,
+            provider,
+            arbiter,
+            descriptions.length
+        );
     }
 
-
-    function submitMilestone(uint256 agreementId, uint256 milestoneIndex) external {
+    function submitMilestone(
+        uint256 agreementId,
+        uint256 milestoneIndex
+    ) external {
         Agreement storage agreement = _agreements[agreementId];
         if (agreement.client == address(0)) {
-    revert AgreementNotFound(agreementId);
-}
+            revert AgreementNotFound(agreementId);
+        }
         if (msg.sender != agreement.provider) {
             revert NotAgreementProvider(agreementId, msg.sender);
         }
@@ -143,34 +161,55 @@ contract ClaimPay {
 
         Milestone storage milestone = agreement.milestones[milestoneIndex];
         if (milestone.status != MilestoneStatus.Pending) {
-            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
+            revert InvalidMilestoneStatus(
+                agreementId,
+                milestoneIndex,
+                milestone.status
+            );
         }
 
         milestone.status = MilestoneStatus.Submitted;
 
         emit MilestoneSubmitted(agreementId, milestoneIndex, msg.sender);
+    }
 
-
-
-}
-
-
-    function getAgreement(uint256 agreementId)
+    function getAgreement(
+        uint256 agreementId
+    )
         external
         view
-        returns (address client, address provider, address arbiter, AgreementStatus status, uint256 milestoneCount)
+        returns (
+            address client,
+            address provider,
+            address arbiter,
+            AgreementStatus status,
+            uint256 milestoneCount
+        )
     {
         if (agreementId == 0 || agreementId > agreementCount) {
             revert AgreementNotFound(agreementId);
         }
         Agreement storage agreement = _agreements[agreementId];
-        return (agreement.client, agreement.provider, agreement.arbiter, agreement.status, agreement.milestones.length);
+        return (
+            agreement.client,
+            agreement.provider,
+            agreement.arbiter,
+            agreement.status,
+            agreement.milestones.length
+        );
     }
 
-    function getMilestone(uint256 agreementId, uint256 milestoneIndex)
+    function getMilestone(
+        uint256 agreementId,
+        uint256 milestoneIndex
+    )
         external
         view
-        returns (string memory description, uint256 amount, MilestoneStatus status)
+        returns (
+            string memory description,
+            uint256 amount,
+            MilestoneStatus status
+        )
     {
         if (agreementId == 0 || agreementId > agreementCount) {
             revert AgreementNotFound(agreementId);
@@ -182,6 +221,4 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
         return (milestone.description, milestone.amount, milestone.status);
     }
-
 }
-
