@@ -15,6 +15,12 @@ contract ClaimPay {
     error AgreementNotFound(uint256 agreementId);
     error MilestoneNotFound(uint256 agreementId, uint256 milestoneIndex);
     error InvalidPaymentToken();
+    error NotAgreementProvider(uint256 agreementId, address caller);
+    error InvalidMilestoneStatus(
+    uint256 agreementId,
+    uint256 milestoneIndex,
+    MilestoneStatus currentStatus
+);
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -23,6 +29,12 @@ contract ClaimPay {
         address arbiter,
         uint256 milestoneCount
     );
+
+    event MilestoneSubmitted(
+    uint256 indexed agreementId,
+    uint256 indexed milestoneIndex,
+    address indexed provider
+);
 
     enum AgreementStatus {
         Active,
@@ -116,6 +128,33 @@ contract ClaimPay {
         emit AgreementCreated(agreementId, msg.sender, provider, arbiter, descriptions.length);
     }
 
+
+    function submitMilestone(uint256 agreementId, uint256 milestoneIndex) external {
+        Agreement storage agreement = _agreements[agreementId];
+        if (agreement.client == address(0)) {
+    revert AgreementNotFound(agreementId);
+}
+        if (msg.sender != agreement.provider) {
+            revert NotAgreementProvider(agreementId, msg.sender);
+        }
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+        if (milestone.status != MilestoneStatus.Pending) {
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
+        }
+
+        milestone.status = MilestoneStatus.Submitted;
+
+        emit MilestoneSubmitted(agreementId, milestoneIndex, msg.sender);
+
+
+
+}
+
+
     function getAgreement(uint256 agreementId)
         external
         view
@@ -143,4 +182,6 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
         return (milestone.description, milestone.amount, milestone.status);
     }
+
 }
+
