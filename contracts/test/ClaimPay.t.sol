@@ -15,6 +15,7 @@ contract ClaimPayTest is Test {
     address internal client = makeAddr("client");
     address internal provider = makeAddr("provider");
     address internal arbiter = makeAddr("arbiter");
+    address internal unfundedClient = makeAddr("unfundedClient");
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -275,6 +276,24 @@ contract ClaimPayTest is Test {
             abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(claimPay), 0, amounts[0])
         );
         vm.prank(client);
+        claimPay.createAgreement(provider, arbiter, descriptions, amounts);
+
+        assertEq(claimPay.agreementCount(), 0);
+    }
+
+    function testRevertWhenBalanceIsInsufficient() public {
+        assertEq(mockUSDC.balanceOf(unfundedClient), 0);
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+        vm.prank(unfundedClient);
+        mockUSDC.approve(address(claimPay), amounts[0]);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, unfundedClient, 0, amounts[0])
+        );
+        vm.prank(unfundedClient);
         claimPay.createAgreement(provider, arbiter, descriptions, amounts);
 
         assertEq(claimPay.agreementCount(), 0);
