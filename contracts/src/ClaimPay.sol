@@ -24,6 +24,7 @@ contract ClaimPay {
         MilestoneStatus currentStatus
     );
     error NotAgreementClient(uint256 agreementId, address caller);
+   
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -47,6 +48,12 @@ contract ClaimPay {
     );
 
     event AgreementCompleted(uint256 indexed agreementId);
+
+    event MilestoneDisputed(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed client
+    );
 
     enum AgreementStatus {
         Active,
@@ -182,6 +189,39 @@ contract ClaimPay {
 
         emit MilestoneSubmitted(agreementId, milestoneIndex, msg.sender);
     }
+
+   function disputeMilestone(
+    uint256 agreementId,
+    uint256 milestoneIndex
+) external {
+    Agreement storage agreement = _agreements[agreementId];
+
+    if (agreement.client == address(0)) {
+        revert AgreementNotFound(agreementId);
+    }
+
+    if (msg.sender != agreement.client) {
+        revert NotAgreementClient(agreementId, msg.sender);
+    }
+
+    if (milestoneIndex >= agreement.milestones.length) {
+        revert MilestoneNotFound(agreementId, milestoneIndex);
+    }
+
+    Milestone storage milestone = agreement.milestones[milestoneIndex];
+
+    if (milestone.status != MilestoneStatus.Submitted) {
+        revert InvalidMilestoneStatus(
+            agreementId,
+            milestoneIndex,
+            milestone.status
+        );
+    }
+
+    milestone.status = MilestoneStatus.Disputed;
+
+    emit MilestoneDisputed(agreementId, milestoneIndex, msg.sender);
+}
 
     function approveMilestone(
         uint256 agreementId,
