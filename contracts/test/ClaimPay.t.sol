@@ -42,6 +42,12 @@ contract ClaimPayTest is Test {
 
     event AgreementCompleted(uint256 indexed agreementId);
 
+    event MilestoneDisputed(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed client
+    );
+
     function setUp() public {
         mockUSDC = new MockUSDC();
         claimPay = new ClaimPay(address(mockUSDC));
@@ -863,5 +869,307 @@ contract ClaimPayTest is Test {
 
         vm.prank(client);
         claimPay.approveMilestone(agreementId, 0);
+    }
+    function testClientCanDisputeSubmittedMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        uint256 providerBalanceBefore = mockUSDC.balanceOf(provider);
+        uint256 claimPayBalanceBefore = mockUSDC.balanceOf(address(claimPay));
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus milestoneStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        (, , , ClaimPay.AgreementStatus agreementStatus, ) = claimPay
+            .getAgreement(agreementId);
+
+        assertEq(
+            uint256(milestoneStatus),
+            uint256(ClaimPay.MilestoneStatus.Disputed)
+        );
+
+        assertEq(
+            uint256(agreementStatus),
+            uint256(ClaimPay.AgreementStatus.Active)
+        );
+
+        assertEq(mockUSDC.balanceOf(provider), providerBalanceBefore);
+        assertEq(mockUSDC.balanceOf(address(claimPay)), claimPayBalanceBefore);
+    }
+
+    function testClientCanDisputeSubmittedMilestoneWithoutArbiter() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            address(0),
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        uint256 providerBalanceBefore = mockUSDC.balanceOf(provider);
+        uint256 claimPayBalanceBefore = mockUSDC.balanceOf(address(claimPay));
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus milestoneStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        (, , address storedArbiter, , ) = claimPay.getAgreement(agreementId);
+
+        assertEq(storedArbiter, address(0));
+
+        assertEq(
+            uint256(milestoneStatus),
+            uint256(ClaimPay.MilestoneStatus.Disputed)
+        );
+
+        assertEq(mockUSDC.balanceOf(provider), providerBalanceBefore);
+
+        assertEq(mockUSDC.balanceOf(address(claimPay)), claimPayBalanceBefore);
+    }
+
+    function testRevertWhenNonClientDisputesMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.NotAgreementClient.selector,
+                agreementId,
+                provider
+            )
+        );
+
+        vm.prank(provider);
+        claimPay.disputeMilestone(agreementId, 0);
+    }
+
+    function testRevertWhenDisputingMilestoneFromUnknownAgreement() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(ClaimPay.AgreementNotFound.selector, 1)
+        );
+
+        vm.prank(client);
+        claimPay.disputeMilestone(1, 0);
+
+        assertEq(claimPay.agreementCount(), 0);
+    }
+    function testRevertWhenDisputingMilestoneDoesNotExist() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.MilestoneNotFound.selector,
+                agreementId,
+                1
+            )
+        );
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 1);
+    }
+    function testRevertWhenDisputingPendingMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.InvalidMilestoneStatus.selector,
+                agreementId,
+                0,
+                ClaimPay.MilestoneStatus.Pending
+            )
+        );
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Pending)
+        );
+    }
+
+    function testRevertWhenDisputingMilestoneTwice() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.InvalidMilestoneStatus.selector,
+                agreementId,
+                0,
+                ClaimPay.MilestoneStatus.Disputed
+            )
+        );
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        assertEq(
+            uint256(storedStatus),
+            uint256(ClaimPay.MilestoneStatus.Disputed)
+        );
+    }
+
+    function testRevertWhenDisputingPaidMilestone() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        vm.prank(client);
+        claimPay.approveMilestone(agreementId, 0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClaimPay.InvalidMilestoneStatus.selector,
+                agreementId,
+                0,
+                ClaimPay.MilestoneStatus.Paid
+            )
+        );
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
+
+        (, , ClaimPay.MilestoneStatus storedStatus) = claimPay.getMilestone(
+            agreementId,
+            0
+        );
+
+        assertEq(uint256(storedStatus), uint256(ClaimPay.MilestoneStatus.Paid));
+    }
+
+    function testEmitMilestoneDisputed() public {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.prank(client);
+        uint256 agreementId = claimPay.createAgreement(
+            provider,
+            arbiter,
+            descriptions,
+            amounts
+        );
+
+        vm.prank(provider);
+        claimPay.submitMilestone(agreementId, 0);
+
+        vm.expectEmit(true, true, true, true, address(claimPay));
+        emit MilestoneDisputed(agreementId, 0, client);
+
+        vm.prank(client);
+        claimPay.disputeMilestone(agreementId, 0);
     }
 }
