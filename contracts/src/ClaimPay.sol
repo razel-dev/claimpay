@@ -24,6 +24,8 @@ contract ClaimPay {
         MilestoneStatus currentStatus
     );
     error NotAgreementClient(uint256 agreementId, address caller);
+    error NoDisputeResolverConfigured(uint256 agreementId);
+    error NotAgreementResolver(uint256 agreementId, address caller);
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -54,6 +56,20 @@ contract ClaimPay {
         address indexed client
     );
 
+    event MilestoneRefunded(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed client,
+        uint256 amount
+    );
+
+    event DisputeResolved(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed resolver,
+        DisputeResolution resolution
+    );
+
     enum AgreementStatus {
         Active,
         Completed
@@ -64,13 +80,18 @@ contract ClaimPay {
         Submitted,
         Disputed,
         Paid,
-        Rejected
+        Refunded
     }
 
     struct Milestone {
         string description;
         uint256 amount;
         MilestoneStatus status;
+    }
+
+    enum DisputeResolution {
+        PayProvider,
+        RefundClient
     }
 
     struct Agreement {
