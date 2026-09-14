@@ -243,6 +243,85 @@ contract ClaimPay {
         emit MilestoneDisputed(agreementId, milestoneIndex, msg.sender);
     }
 
+    function resolveDispute(
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        DisputeResolution resolution
+    ) external {
+        Agreement storage agreement = _agreements[agreementId];
+
+        if (agreement.client == address(0)) {
+            revert AgreementNotFound(agreementId);
+        }
+
+        if (agreement.arbiter == address(0)) {
+            revert NoDisputeResolverConfigured(agreementId);
+        }
+
+        if (msg.sender != agreement.arbiter) {
+            revert NotAgreementResolver(agreementId, msg.sender);
+        }
+
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+
+        if (milestone.status != MilestoneStatus.Disputed) {
+            revert InvalidMilestoneStatus(
+                agreementId,
+                milestoneIndex,
+                milestone.status
+            );
+        }
+
+        address recipient;
+
+        if (resolution == DisputeResolution.PayProvider) {
+            milestone.status = MilestoneStatus.Paid;
+            recipient = agreement.provider;
+        } else {
+            milestone.status = MilestoneStatus.Refunded;
+            recipient = agreement.client;
+        }
+
+        bool allMilestonesSettled = _allMilestonesSettled(agreement);
+
+        if (allMilestonesSettled) {
+            agreement.status = AgreementStatus.Completed;
+        }
+
+        paymentToken.safeTransfer(recipient, milestone.amount);
+
+        if (resolution == DisputeResolution.PayProvider) {
+            emit MilestonePaid(
+                agreementId,
+                milestoneIndex,
+                agreement.provider,
+                milestone.amount
+            );
+        } else {
+            emit MilestoneRefunded(
+                agreementId,
+                milestoneIndex,
+                agreement.client,
+                milestone.amount
+            );
+        }
+
+        emit DisputeResolved(
+            agreementId,
+            milestoneIndex,
+            msg.sender,
+            resolution
+        );
+
+        if (allMilestonesSettled) {
+            emit AgreementCompleted(agreementId);
+        }
+    }
+
     function approveMilestone(
         uint256 agreementId,
         uint256 milestoneIndex
@@ -273,9 +352,9 @@ contract ClaimPay {
 
         milestone.status = MilestoneStatus.Paid;
 
-        bool allMilestonesPaid = _allMilestonesPaid(agreement);
+        bool allMilestonesSettled = _allMilestonesSettled(agreement);
 
-        if (allMilestonesPaid) {
+        if (allMilestonesSettled) {
             agreement.status = AgreementStatus.Completed;
         }
 
@@ -288,7 +367,7 @@ contract ClaimPay {
             milestone.amount
         );
 
-        if (allMilestonesPaid) {
+        if (allMilestonesSettled) {
             emit AgreementCompleted(agreementId);
         }
     }
@@ -318,17 +397,22 @@ contract ClaimPay {
             agreement.milestones.length
         );
     }
-    function _allMilestonesPaid(
-        Agreement storage agreement
-    ) private view returns (bool) {
-        for (uint256 i; i < agreement.milestones.length; ++i) {
-            if (agreement.milestones[i].status != MilestoneStatus.Paid) {
-                return false;
-            }
-        }
+  function _allMilestonesSettled(
+    Agreement storage agreement
+) private view returns (bool) {
+    for (uint256 i; i < agreement.milestones.length; ++i) {
+        MilestoneStatus status = agreement.milestones[i].status;
 
-        return true;
+        if (
+            status != MilestoneStatus.Paid &&
+            status != MilestoneStatus.Refunded
+        ) {
+            return false;
+        }
     }
+
+    return true;
+}
 
     function getMilestone(
         uint256 agreementId,
