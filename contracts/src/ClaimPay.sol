@@ -26,6 +26,22 @@ contract ClaimPay {
     error NotAgreementClient(uint256 agreementId, address caller);
     error NoDisputeResolverConfigured(uint256 agreementId);
     error NotAgreementResolver(uint256 agreementId, address caller);
+    error DisputeResolverAlreadyConfigured(uint256 agreementId);
+    error NotAgreementParty(uint256 agreementId, address caller);
+    error SettlementProposalNotFound(
+        uint256 agreementId,
+        uint256 milestoneIndex
+    );
+    error SettlementProposerCannotAccept(
+        uint256 agreementId,
+        uint256 milestoneIndex
+    );
+    error SettlementProposalMismatch(
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        DisputeResolution expectedResolution,
+        DisputeResolution proposedResolution
+    );
 
     event AgreementCreated(
         uint256 indexed agreementId,
@@ -70,6 +86,20 @@ contract ClaimPay {
         DisputeResolution resolution
     );
 
+    event SettlementProposed(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed proposer,
+        DisputeResolution resolution
+    );
+
+    event SettlementAccepted(
+        uint256 indexed agreementId,
+        uint256 indexed milestoneIndex,
+        address indexed acceptor,
+        DisputeResolution resolution
+    );
+
     enum AgreementStatus {
         Active,
         Completed
@@ -94,6 +124,11 @@ contract ClaimPay {
         RefundClient
     }
 
+    struct SettlementProposal {
+        address proposer;
+        DisputeResolution resolution;
+    }
+
     struct Agreement {
         address client;
         address provider;
@@ -106,6 +141,8 @@ contract ClaimPay {
 
     uint256 public agreementCount;
     mapping(uint256 => Agreement) private _agreements;
+    mapping(uint256 => mapping(uint256 => SettlementProposal))
+        private _settlementProposals;
 
     constructor(address paymentTokenAddress) {
         if (paymentTokenAddress == address(0)) {
@@ -276,45 +313,149 @@ contract ClaimPay {
             );
         }
 
-        address recipient;
-
-        if (resolution == DisputeResolution.PayProvider) {
-            milestone.status = MilestoneStatus.Paid;
-            recipient = agreement.provider;
-        } else {
-            milestone.status = MilestoneStatus.Refunded;
-            recipient = agreement.client;
-        }
-
-        bool allMilestonesSettled = _allMilestonesSettled(agreement);
-
-        if (allMilestonesSettled) {
-            agreement.status = AgreementStatus.Completed;
-        }
-
-        paymentToken.safeTransfer(recipient, milestone.amount);
-
-        if (resolution == DisputeResolution.PayProvider) {
-            emit MilestonePaid(
-                agreementId,
-                milestoneIndex,
-                agreement.provider,
-                milestone.amount
-            );
-        } else {
-            emit MilestoneRefunded(
-                agreementId,
-                milestoneIndex,
-                agreement.client,
-                milestone.amount
-            );
-        }
+        bool allMilestonesSettled = _settleMilestone(
+            agreementId,
+            milestoneIndex,
+            agreement,
+            milestone,
+            resolution
+        );
 
         emit DisputeResolved(
             agreementId,
             milestoneIndex,
             msg.sender,
             resolution
+        );
+
+        if (allMilestonesSettled) {
+            emit AgreementCompleted(agreementId);
+        }
+    }
+
+    function proposeSettlement(
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        DisputeResolution resolution
+    ) external {
+        Agreement storage agreement = _agreements[agreementId];
+
+        if (agreement.client == address(0)) {
+            revert AgreementNotFound(agreementId);
+        }
+
+        if (
+            msg.sender != agreement.client && msg.sender != agreement.provider
+        ) {
+            revert NotAgreementParty(agreementId, msg.sender);
+        }
+
+        if (agreement.arbiter != address(0)) {
+            revert DisputeResolverAlreadyConfigured(agreementId);
+        }
+
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+
+        if (milestone.status != MilestoneStatus.Disputed) {
+            revert InvalidMilestoneStatus(
+                agreementId,
+                milestoneIndex,
+                milestone.status
+            );
+        }
+
+        SettlementProposal storage proposal = _settlementProposals[agreementId][
+            milestoneIndex
+        ];
+
+        proposal.proposer = msg.sender;
+        proposal.resolution = resolution;
+
+        emit SettlementProposed(
+            agreementId,
+            milestoneIndex,
+            msg.sender,
+            resolution
+        );
+    }
+
+    function acceptSettlement(
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        DisputeResolution expectedResolution
+    ) external {
+        Agreement storage agreement = _agreements[agreementId];
+
+        if (agreement.client == address(0)) {
+            revert AgreementNotFound(agreementId);
+        }
+
+        if (
+            msg.sender != agreement.client && msg.sender != agreement.provider
+        ) {
+            revert NotAgreementParty(agreementId, msg.sender);
+        }
+
+        if (agreement.arbiter != address(0)) {
+            revert DisputeResolverAlreadyConfigured(agreementId);
+        }
+
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        Milestone storage milestone = agreement.milestones[milestoneIndex];
+
+        if (milestone.status != MilestoneStatus.Disputed) {
+            revert InvalidMilestoneStatus(
+                agreementId,
+                milestoneIndex,
+                milestone.status
+            );
+        }
+
+        SettlementProposal storage proposal = _settlementProposals[agreementId][
+            milestoneIndex
+        ];
+
+        if (proposal.proposer == address(0)) {
+            revert SettlementProposalNotFound(agreementId, milestoneIndex);
+        }
+
+        if (msg.sender == proposal.proposer) {
+            revert SettlementProposerCannotAccept(agreementId, milestoneIndex);
+        }
+
+        if (expectedResolution != proposal.resolution) {
+            revert SettlementProposalMismatch(
+                agreementId,
+                milestoneIndex,
+                expectedResolution,
+                proposal.resolution
+            );
+        }
+
+        DisputeResolution acceptedResolution = proposal.resolution;
+
+        delete _settlementProposals[agreementId][milestoneIndex];
+
+        bool allMilestonesSettled = _settleMilestone(
+            agreementId,
+            milestoneIndex,
+            agreement,
+            milestone,
+            acceptedResolution
+        );
+
+        emit SettlementAccepted(
+            agreementId,
+            milestoneIndex,
+            msg.sender,
+            acceptedResolution
         );
 
         if (allMilestonesSettled) {
@@ -397,22 +538,67 @@ contract ClaimPay {
             agreement.milestones.length
         );
     }
-  function _allMilestonesSettled(
-    Agreement storage agreement
-) private view returns (bool) {
-    for (uint256 i; i < agreement.milestones.length; ++i) {
-        MilestoneStatus status = agreement.milestones[i].status;
 
-        if (
-            status != MilestoneStatus.Paid &&
-            status != MilestoneStatus.Refunded
-        ) {
-            return false;
+    function _settleMilestone(
+        uint256 agreementId,
+        uint256 milestoneIndex,
+        Agreement storage agreement,
+        Milestone storage milestone,
+        DisputeResolution resolution
+    ) private returns (bool allMilestonesSettled) {
+        address recipient;
+
+        if (resolution == DisputeResolution.PayProvider) {
+            milestone.status = MilestoneStatus.Paid;
+            recipient = agreement.provider;
+        } else {
+            milestone.status = MilestoneStatus.Refunded;
+            recipient = agreement.client;
         }
+
+        allMilestonesSettled = _allMilestonesSettled(agreement);
+
+        if (allMilestonesSettled) {
+            agreement.status = AgreementStatus.Completed;
+        }
+
+        paymentToken.safeTransfer(recipient, milestone.amount);
+
+        if (resolution == DisputeResolution.PayProvider) {
+            emit MilestonePaid(
+                agreementId,
+                milestoneIndex,
+                agreement.provider,
+                milestone.amount
+            );
+        } else {
+            emit MilestoneRefunded(
+                agreementId,
+                milestoneIndex,
+                agreement.client,
+                milestone.amount
+            );
+        }
+
+        return allMilestonesSettled;
     }
 
-    return true;
-}
+    function _allMilestonesSettled(
+        Agreement storage agreement
+    ) private view returns (bool) {
+        for (uint256 i; i < agreement.milestones.length; ++i) {
+            MilestoneStatus status = agreement.milestones[i].status;
+
+            if (
+                status != MilestoneStatus.Paid &&
+                status != MilestoneStatus.Refunded
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     function getMilestone(
         uint256 agreementId,
@@ -436,4 +622,36 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
         return (milestone.description, milestone.amount, milestone.status);
     }
+
+    function getSettlementProposal(
+    uint256 agreementId,
+    uint256 milestoneIndex
+)
+    external
+    view
+    returns (
+        bool exists,
+        address proposer,
+        DisputeResolution resolution
+    )
+{
+    if (agreementId == 0 || agreementId > agreementCount) {
+        revert AgreementNotFound(agreementId);
+    }
+
+    Agreement storage agreement = _agreements[agreementId];
+
+    if (milestoneIndex >= agreement.milestones.length) {
+        revert MilestoneNotFound(agreementId, milestoneIndex);
+    }
+
+    SettlementProposal storage proposal =
+        _settlementProposals[agreementId][milestoneIndex];
+
+    return (
+        proposal.proposer != address(0),
+        proposal.proposer,
+        proposal.resolution
+    );
+}
 }
