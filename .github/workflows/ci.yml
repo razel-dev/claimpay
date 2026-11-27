@@ -39,6 +39,9 @@ jobs:
       - name: Build contracts
         run: forge build --sizes
 
+      - name: Vérifier l'ABI versionnée pour le front
+        run: bash ../scripts/claimpay-abi.sh --check
+
       - name: Run contract tests
         run: forge test -vvv
 
