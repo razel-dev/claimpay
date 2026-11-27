@@ -201,7 +201,9 @@ contract ClaimPayTest is Test {
         _assertRejectedCreation(provider, address(claimPay), ClaimPay.InvalidArbiter.selector);
     }
 
-    function _assertRejectedCreation(address candidateProvider, address candidateArbiter, bytes4 expectedError) private {
+    function _assertRejectedCreation(address candidateProvider, address candidateArbiter, bytes4 expectedError)
+        private
+    {
         string[] memory descriptions = new string[](1);
         descriptions[0] = "Maquette";
         uint256[] memory amounts = new uint256[](1);
