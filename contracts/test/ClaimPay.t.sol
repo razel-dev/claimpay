@@ -193,6 +193,30 @@ contract ClaimPayTest is Test {
         claimPay.createAgreement(provider, provider, descriptions, amounts);
     }
 
+    function testRevertWhenProviderIsClaimPay() public {
+        _assertRejectedCreation(address(claimPay), arbiter, ClaimPay.InvalidProvider.selector);
+    }
+
+    function testRevertWhenArbiterIsClaimPay() public {
+        _assertRejectedCreation(provider, address(claimPay), ClaimPay.InvalidArbiter.selector);
+    }
+
+    function _assertRejectedCreation(address candidateProvider, address candidateArbiter, bytes4 expectedError) private {
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Maquette";
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 500 * 10 ** 6;
+
+        vm.expectRevert(expectedError);
+        vm.prank(client);
+        claimPay.createAgreement(candidateProvider, candidateArbiter, descriptions, amounts);
+
+        assertEq(claimPay.agreementCount(), 0);
+        assertEq(mockUSDC.balanceOf(client), CLIENT_BALANCE);
+        assertEq(mockUSDC.balanceOf(address(claimPay)), 0);
+        assertEq(mockUSDC.allowance(client, address(claimPay)), CLIENT_BALANCE);
+    }
+
     function testRevertWhenNoMilestones() public {
         string[] memory descriptions = new string[](0);
         uint256[] memory amounts = new uint256[](0);
