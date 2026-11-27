@@ -2,7 +2,14 @@
 
 ClaimPay est une application Web3 de paiement conditionnel par jalons. Elle permet à un client et à un prestataire de définir plusieurs étapes de réalisation, puis de déclencher progressivement les paiements après validation du travail effectué.
 
-ClaimPay n’est pas un système d’escrow : les fonds restent dans le wallet du client. Le client autorise le smart contract à transférer un montant défini grâce au mécanisme ERC-20 `approve` et `transferFrom`.
+**Les fonds sont déposés dans ClaimPay dès la création de l’accord.** Le client autorise d’abord ClaimPay à dépenser le jeton de paiement (`approve` sur le contrat du jeton). Puis `createAgreement` prélève le total des jalons. Autoriser ne déplace pas de fonds ; créer l’accord les place sous séquestre.
+
+Le prestataire soumet un jalon. Le client peut alors l’approuver pour payer le prestataire, ou le contester. En cas de contestation :
+
+* **Avec tiers désigné** : seul ce tiers peut choisir entre paiement intégral du jalon au prestataire et remboursement intégral au client.
+* **Sans tiers** : une partie propose l’une de ces issues, l’autre doit l’accepter. Sans accord, il n’y a ni transfert ni déblocage automatique.
+
+L’accord devient `Completed` lorsque tous les jalons sont payés ou remboursés. Pour les paramètres, les erreurs, les événements et des exemples concrets, voir le [guide français du contrat](docs/SMART_CONTRACT.md).
 
 ## Technologies
 
@@ -15,16 +22,12 @@ ClaimPay n’est pas un système d’escrow : les fonds restent dans le wallet d
 
 ### Frontend
 
-* React
-* TypeScript
-* Vite
-* Wagmi
-* Viem
+Le dossier `frontend/` contient actuellement un squelette React/Vite. La cible du MVP est une interface **Angular et TypeScript** connectée au wallet et au contrat ; cette migration n’est pas encore livrée.
 
 ## Structure du projet
 
 * `contracts/` : smart contracts, tests et scripts de déploiement
-* `frontend/` : interface utilisateur React
+* `frontend/` : code de l’interface utilisateur
 * `docs/` : documentation fonctionnelle et technique
 * `deployments/` : informations relatives aux déploiements
 
