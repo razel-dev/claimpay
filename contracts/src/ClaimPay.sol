@@ -2,9 +2,7 @@
 pragma solidity ^0.8.35;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ClaimPay {
     using SafeERC20 for IERC20;
@@ -18,24 +16,14 @@ contract ClaimPay {
     error MilestoneNotFound(uint256 agreementId, uint256 milestoneIndex);
     error InvalidPaymentToken();
     error NotAgreementProvider(uint256 agreementId, address caller);
-    error InvalidMilestoneStatus(
-        uint256 agreementId,
-        uint256 milestoneIndex,
-        MilestoneStatus currentStatus
-    );
+    error InvalidMilestoneStatus(uint256 agreementId, uint256 milestoneIndex, MilestoneStatus currentStatus);
     error NotAgreementClient(uint256 agreementId, address caller);
     error NoDisputeResolverConfigured(uint256 agreementId);
     error NotAgreementResolver(uint256 agreementId, address caller);
     error DisputeResolverAlreadyConfigured(uint256 agreementId);
     error NotAgreementParty(uint256 agreementId, address caller);
-    error SettlementProposalNotFound(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    );
-    error SettlementProposerCannotAccept(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    );
+    error SettlementProposalNotFound(uint256 agreementId, uint256 milestoneIndex);
+    error SettlementProposerCannotAccept(uint256 agreementId, uint256 milestoneIndex);
     error SettlementProposalMismatch(
         uint256 agreementId,
         uint256 milestoneIndex,
@@ -51,32 +39,18 @@ contract ClaimPay {
         uint256 milestoneCount
     );
 
-    event MilestoneSubmitted(
-        uint256 indexed agreementId,
-        uint256 indexed milestoneIndex,
-        address indexed provider
-    );
+    event MilestoneSubmitted(uint256 indexed agreementId, uint256 indexed milestoneIndex, address indexed provider);
 
     event MilestonePaid(
-        uint256 indexed agreementId,
-        uint256 indexed milestoneIndex,
-        address indexed provider,
-        uint256 amount
+        uint256 indexed agreementId, uint256 indexed milestoneIndex, address indexed provider, uint256 amount
     );
 
     event AgreementCompleted(uint256 indexed agreementId);
 
-    event MilestoneDisputed(
-        uint256 indexed agreementId,
-        uint256 indexed milestoneIndex,
-        address indexed client
-    );
+    event MilestoneDisputed(uint256 indexed agreementId, uint256 indexed milestoneIndex, address indexed client);
 
     event MilestoneRefunded(
-        uint256 indexed agreementId,
-        uint256 indexed milestoneIndex,
-        address indexed client,
-        uint256 amount
+        uint256 indexed agreementId, uint256 indexed milestoneIndex, address indexed client, uint256 amount
     );
 
     event DisputeResolved(
@@ -141,8 +115,7 @@ contract ClaimPay {
 
     uint256 public agreementCount;
     mapping(uint256 => Agreement) private _agreements;
-    mapping(uint256 => mapping(uint256 => SettlementProposal))
-        private _settlementProposals;
+    mapping(uint256 => mapping(uint256 => SettlementProposal)) private _settlementProposals;
 
     constructor(address paymentTokenAddress) {
         if (paymentTokenAddress == address(0)) {
@@ -161,10 +134,7 @@ contract ClaimPay {
         if (provider == address(0) || provider == msg.sender) {
             revert InvalidProvider();
         }
-        if (
-            arbiter != address(0) &&
-            (arbiter == msg.sender || arbiter == provider)
-        ) {
+        if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider)) {
             revert InvalidArbiter();
         }
         if (descriptions.length == 0) {
@@ -200,28 +170,14 @@ contract ClaimPay {
         agreement.status = AgreementStatus.Active;
 
         for (uint256 i; i < descriptions.length; ++i) {
-            agreement.milestones.push(
-                Milestone({
-                    description: descriptions[i],
-                    amount: amounts[i],
-                    status: MilestoneStatus.Pending
-                })
-            );
+            agreement.milestones
+                .push(Milestone({description: descriptions[i], amount: amounts[i], status: MilestoneStatus.Pending}));
         }
 
-        emit AgreementCreated(
-            agreementId,
-            msg.sender,
-            provider,
-            arbiter,
-            descriptions.length
-        );
+        emit AgreementCreated(agreementId, msg.sender, provider, arbiter, descriptions.length);
     }
 
-    function submitMilestone(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    ) external {
+    function submitMilestone(uint256 agreementId, uint256 milestoneIndex) external {
         Agreement storage agreement = _agreements[agreementId];
         if (agreement.client == address(0)) {
             revert AgreementNotFound(agreementId);
@@ -235,11 +191,7 @@ contract ClaimPay {
 
         Milestone storage milestone = agreement.milestones[milestoneIndex];
         if (milestone.status != MilestoneStatus.Pending) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
         milestone.status = MilestoneStatus.Submitted;
@@ -247,10 +199,7 @@ contract ClaimPay {
         emit MilestoneSubmitted(agreementId, milestoneIndex, msg.sender);
     }
 
-    function disputeMilestone(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    ) external {
+    function disputeMilestone(uint256 agreementId, uint256 milestoneIndex) external {
         Agreement storage agreement = _agreements[agreementId];
 
         if (agreement.client == address(0)) {
@@ -268,11 +217,7 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
 
         if (milestone.status != MilestoneStatus.Submitted) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
         milestone.status = MilestoneStatus.Disputed;
@@ -280,11 +225,7 @@ contract ClaimPay {
         emit MilestoneDisputed(agreementId, milestoneIndex, msg.sender);
     }
 
-    function resolveDispute(
-        uint256 agreementId,
-        uint256 milestoneIndex,
-        DisputeResolution resolution
-    ) external {
+    function resolveDispute(uint256 agreementId, uint256 milestoneIndex, DisputeResolution resolution) external {
         Agreement storage agreement = _agreements[agreementId];
 
         if (agreement.client == address(0)) {
@@ -306,47 +247,26 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
 
         if (milestone.status != MilestoneStatus.Disputed) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
-        bool allMilestonesSettled = _settleMilestone(
-            agreementId,
-            milestoneIndex,
-            agreement,
-            milestone,
-            resolution
-        );
+        bool allMilestonesSettled = _settleMilestone(agreementId, milestoneIndex, agreement, milestone, resolution);
 
-        emit DisputeResolved(
-            agreementId,
-            milestoneIndex,
-            msg.sender,
-            resolution
-        );
+        emit DisputeResolved(agreementId, milestoneIndex, msg.sender, resolution);
 
         if (allMilestonesSettled) {
             emit AgreementCompleted(agreementId);
         }
     }
 
-    function proposeSettlement(
-        uint256 agreementId,
-        uint256 milestoneIndex,
-        DisputeResolution resolution
-    ) external {
+    function proposeSettlement(uint256 agreementId, uint256 milestoneIndex, DisputeResolution resolution) external {
         Agreement storage agreement = _agreements[agreementId];
 
         if (agreement.client == address(0)) {
             revert AgreementNotFound(agreementId);
         }
 
-        if (
-            msg.sender != agreement.client && msg.sender != agreement.provider
-        ) {
+        if (msg.sender != agreement.client && msg.sender != agreement.provider) {
             revert NotAgreementParty(agreementId, msg.sender);
         }
 
@@ -361,42 +281,27 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
 
         if (milestone.status != MilestoneStatus.Disputed) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
-        SettlementProposal storage proposal = _settlementProposals[agreementId][
-            milestoneIndex
-        ];
+        SettlementProposal storage proposal = _settlementProposals[agreementId][milestoneIndex];
 
         proposal.proposer = msg.sender;
         proposal.resolution = resolution;
 
-        emit SettlementProposed(
-            agreementId,
-            milestoneIndex,
-            msg.sender,
-            resolution
-        );
+        emit SettlementProposed(agreementId, milestoneIndex, msg.sender, resolution);
     }
 
-    function acceptSettlement(
-        uint256 agreementId,
-        uint256 milestoneIndex,
-        DisputeResolution expectedResolution
-    ) external {
+    function acceptSettlement(uint256 agreementId, uint256 milestoneIndex, DisputeResolution expectedResolution)
+        external
+    {
         Agreement storage agreement = _agreements[agreementId];
 
         if (agreement.client == address(0)) {
             revert AgreementNotFound(agreementId);
         }
 
-        if (
-            msg.sender != agreement.client && msg.sender != agreement.provider
-        ) {
+        if (msg.sender != agreement.client && msg.sender != agreement.provider) {
             revert NotAgreementParty(agreementId, msg.sender);
         }
 
@@ -411,16 +316,10 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
 
         if (milestone.status != MilestoneStatus.Disputed) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
-        SettlementProposal storage proposal = _settlementProposals[agreementId][
-            milestoneIndex
-        ];
+        SettlementProposal storage proposal = _settlementProposals[agreementId][milestoneIndex];
 
         if (proposal.proposer == address(0)) {
             revert SettlementProposalNotFound(agreementId, milestoneIndex);
@@ -431,42 +330,24 @@ contract ClaimPay {
         }
 
         if (expectedResolution != proposal.resolution) {
-            revert SettlementProposalMismatch(
-                agreementId,
-                milestoneIndex,
-                expectedResolution,
-                proposal.resolution
-            );
+            revert SettlementProposalMismatch(agreementId, milestoneIndex, expectedResolution, proposal.resolution);
         }
 
         DisputeResolution acceptedResolution = proposal.resolution;
 
         delete _settlementProposals[agreementId][milestoneIndex];
 
-        bool allMilestonesSettled = _settleMilestone(
-            agreementId,
-            milestoneIndex,
-            agreement,
-            milestone,
-            acceptedResolution
-        );
+        bool allMilestonesSettled =
+            _settleMilestone(agreementId, milestoneIndex, agreement, milestone, acceptedResolution);
 
-        emit SettlementAccepted(
-            agreementId,
-            milestoneIndex,
-            msg.sender,
-            acceptedResolution
-        );
+        emit SettlementAccepted(agreementId, milestoneIndex, msg.sender, acceptedResolution);
 
         if (allMilestonesSettled) {
             emit AgreementCompleted(agreementId);
         }
     }
 
-    function approveMilestone(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    ) external {
+    function approveMilestone(uint256 agreementId, uint256 milestoneIndex) external {
         Agreement storage agreement = _agreements[agreementId];
 
         if (agreement.client == address(0)) {
@@ -484,11 +365,7 @@ contract ClaimPay {
         Milestone storage milestone = agreement.milestones[milestoneIndex];
 
         if (milestone.status != MilestoneStatus.Submitted) {
-            revert InvalidMilestoneStatus(
-                agreementId,
-                milestoneIndex,
-                milestone.status
-            );
+            revert InvalidMilestoneStatus(agreementId, milestoneIndex, milestone.status);
         }
 
         milestone.status = MilestoneStatus.Paid;
@@ -501,42 +378,23 @@ contract ClaimPay {
 
         paymentToken.safeTransfer(agreement.provider, milestone.amount);
 
-        emit MilestonePaid(
-            agreementId,
-            milestoneIndex,
-            agreement.provider,
-            milestone.amount
-        );
+        emit MilestonePaid(agreementId, milestoneIndex, agreement.provider, milestone.amount);
 
         if (allMilestonesSettled) {
             emit AgreementCompleted(agreementId);
         }
     }
 
-    function getAgreement(
-        uint256 agreementId
-    )
+    function getAgreement(uint256 agreementId)
         external
         view
-        returns (
-            address client,
-            address provider,
-            address arbiter,
-            AgreementStatus status,
-            uint256 milestoneCount
-        )
+        returns (address client, address provider, address arbiter, AgreementStatus status, uint256 milestoneCount)
     {
         if (agreementId == 0 || agreementId > agreementCount) {
             revert AgreementNotFound(agreementId);
         }
         Agreement storage agreement = _agreements[agreementId];
-        return (
-            agreement.client,
-            agreement.provider,
-            agreement.arbiter,
-            agreement.status,
-            agreement.milestones.length
-        );
+        return (agreement.client, agreement.provider, agreement.arbiter, agreement.status, agreement.milestones.length);
     }
 
     function _settleMilestone(
@@ -565,34 +423,19 @@ contract ClaimPay {
         paymentToken.safeTransfer(recipient, milestone.amount);
 
         if (resolution == DisputeResolution.PayProvider) {
-            emit MilestonePaid(
-                agreementId,
-                milestoneIndex,
-                agreement.provider,
-                milestone.amount
-            );
+            emit MilestonePaid(agreementId, milestoneIndex, agreement.provider, milestone.amount);
         } else {
-            emit MilestoneRefunded(
-                agreementId,
-                milestoneIndex,
-                agreement.client,
-                milestone.amount
-            );
+            emit MilestoneRefunded(agreementId, milestoneIndex, agreement.client, milestone.amount);
         }
 
         return allMilestonesSettled;
     }
 
-    function _allMilestonesSettled(
-        Agreement storage agreement
-    ) private view returns (bool) {
+    function _allMilestonesSettled(Agreement storage agreement) private view returns (bool) {
         for (uint256 i; i < agreement.milestones.length; ++i) {
             MilestoneStatus status = agreement.milestones[i].status;
 
-            if (
-                status != MilestoneStatus.Paid &&
-                status != MilestoneStatus.Refunded
-            ) {
+            if (status != MilestoneStatus.Paid && status != MilestoneStatus.Refunded) {
                 return false;
             }
         }
@@ -600,17 +443,10 @@ contract ClaimPay {
         return true;
     }
 
-    function getMilestone(
-        uint256 agreementId,
-        uint256 milestoneIndex
-    )
+    function getMilestone(uint256 agreementId, uint256 milestoneIndex)
         external
         view
-        returns (
-            string memory description,
-            uint256 amount,
-            MilestoneStatus status
-        )
+        returns (string memory description, uint256 amount, MilestoneStatus status)
     {
         if (agreementId == 0 || agreementId > agreementCount) {
             revert AgreementNotFound(agreementId);
@@ -623,35 +459,23 @@ contract ClaimPay {
         return (milestone.description, milestone.amount, milestone.status);
     }
 
-    function getSettlementProposal(
-    uint256 agreementId,
-    uint256 milestoneIndex
-)
-    external
-    view
-    returns (
-        bool exists,
-        address proposer,
-        DisputeResolution resolution
-    )
-{
-    if (agreementId == 0 || agreementId > agreementCount) {
-        revert AgreementNotFound(agreementId);
+    function getSettlementProposal(uint256 agreementId, uint256 milestoneIndex)
+        external
+        view
+        returns (bool exists, address proposer, DisputeResolution resolution)
+    {
+        if (agreementId == 0 || agreementId > agreementCount) {
+            revert AgreementNotFound(agreementId);
+        }
+
+        Agreement storage agreement = _agreements[agreementId];
+
+        if (milestoneIndex >= agreement.milestones.length) {
+            revert MilestoneNotFound(agreementId, milestoneIndex);
+        }
+
+        SettlementProposal storage proposal = _settlementProposals[agreementId][milestoneIndex];
+
+        return (proposal.proposer != address(0), proposal.proposer, proposal.resolution);
     }
-
-    Agreement storage agreement = _agreements[agreementId];
-
-    if (milestoneIndex >= agreement.milestones.length) {
-        revert MilestoneNotFound(agreementId, milestoneIndex);
-    }
-
-    SettlementProposal storage proposal =
-        _settlementProposals[agreementId][milestoneIndex];
-
-    return (
-        proposal.proposer != address(0),
-        proposal.proposer,
-        proposal.resolution
-    );
-}
 }
