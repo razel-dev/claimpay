@@ -39,6 +39,11 @@ jobs:
       - name: Build contracts
         run: forge build --sizes
 
+      - name: Export initial de l'ABI compilée de ClaimPay
+        run: |
+          bash ../scripts/claimpay-abi.sh --write
+          sed 's/^/ABI_JSON:/' ../frontend/src/contracts/abi/ClaimPay.json
+
       - name: Run contract tests
         run: forge test -vvv
 
