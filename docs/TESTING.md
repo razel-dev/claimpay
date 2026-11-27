@@ -24,6 +24,18 @@ Ces dénominateurs excluent les tests, les mocks et les bibliothèques tierces. 
 
 Une couverture de 100 % sur ces trois indicateurs ne garantit ni l’absence de défaut ni l’exercice de toutes les suites d’actions possibles. En particulier, passer sur la ligne d’un transfert lors d’un paiement réussi ne vérifie pas ce qui se passe si le jeton refuse de payer. Les tests d’atomicité doivent contrôler les **soldes, statuts et propositions après le refus**, pas seulement la présence d’une erreur.
 
+## Trois tests complémentaires : refus temporaire d’un transfert sortant
+
+Le fichier [ClaimPayTransferFailure.t.sol](../contracts/test/ClaimPayTransferFailure.t.sol) utilise une variante locale du mock dont les transferts sortants peuvent être temporairement refusés. Le dépôt initial a réellement lieu avant le refus. Le contrat ClaimPay testé n’est pas modifié.
+
+| Test | Effet attendu après le refus du jeton |
+|---|---|
+| `testDirectPaymentPreservesStateWhenTransferFails` | Le jalon reste soumis, l’accord actif et les fonds sous séquestre ; le prestataire n’est pas payé. |
+| `testArbiterSettlementPreservesStateWhenTransferFails` | La décision de paiement du tiers ne clôt pas l’accord ; le jalon reste contesté et les soldes ne bougent pas. |
+| `testMutualRefundPreservesProposalOnFailureAndCanBeRetried` | Le jalon reste contesté. L’offre initiale reste disponible, avec le même auteur et la même issue. Une fois le transfert rétabli, le prestataire peut accepter cette même offre : le client est remboursé, l’accord est terminé et l’offre est effacée. |
+
+Ces trois tests s’ajoutent aux 82 de la mesure de référence. Ils concernent un jeton qui signale explicitement un échec, pas toutes les variantes possibles de jetons ERC-20.
+
 ## Reproduire la mesure
 
 Depuis la racine d’une copie du dépôt avec Foundry et les dépendances du projet disponibles :
