@@ -42,6 +42,34 @@ jobs:
       - name: Run contract tests
         run: forge test -vvv
 
+      - name: Mesurer la couverture de ClaimPay
+        env:
+          FOUNDRY_FUZZ_SEED: '0x434c41494d504159'
+        run: |
+          forge coverage --report lcov --report-file "$RUNNER_TEMP/claimpay.lcov"
+          # N'exposer ici que les mesures du contrat applicatif, sans compter les mocks ou les tests.
+          awk '
+            /^SF:/ { selected = ($0 ~ /(^SF:|\/)src\/ClaimPay[.]sol$/); if (selected) found++ }
+            selected { print }
+            /^end_of_record/ { selected = 0 }
+            END { if (found != 1) exit 1 }
+          ' "$RUNNER_TEMP/claimpay.lcov" > "$RUNNER_TEMP/claimpay-core.lcov"
+          cat "$RUNNER_TEMP/claimpay-core.lcov"
+          {
+            echo '### Couverture du contrat ClaimPay'
+            echo '| Indicateur | Touchés / total |'
+            echo '|---|---:|'
+            awk -F: '
+              /^(LF|LH|FNF|FNH|BRF|BRH):/ { n[$1] = $2 }
+              END {
+                if (!("LF" in n) || !("FNF" in n) || !("BRF" in n)) exit 1
+                print "| Lignes | " n["LH"] " / " n["LF"] " |"
+                print "| Fonctions | " n["FNH"] " / " n["FNF"] " |"
+                print "| Branches | " n["BRH"] " / " n["BRF"] " |"
+              }
+            ' "$RUNNER_TEMP/claimpay-core.lcov"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
