@@ -1,8 +1,8 @@
 # ClaimPay — comprendre le contrat, méthode par méthode
 
-**Version de travail du 27 novembre 2026.** Référence : `razel-dev/claimpay`, commit `ce36ef530f75f530ab112baa1648618de3076d56`. Cette documentation décrit le code de cette révision, pas une version de production. Elle ne constitue ni un audit de sécurité ni une attestation de déploiement. Les tests cités existent dans les sources ; leur exécution et la couverture ne sont pas établies par cette lecture. Les exemples sont des appels explicatifs, pas des transactions à envoyer sur un réseau réel.
+**Version de travail du 27 novembre 2026.** Référence : `razel-dev/claimpay`, commit `538bf829c038c6bfdabde77db4e542abb3d4715f`. Cette documentation décrit le code de cette révision, pas une version de production. Elle ne constitue ni un audit de sécurité ni une attestation de déploiement. La [CI du correctif intégré](https://github.com/razel-dev/claimpay/actions/runs/45973141882) a exécuté 82 tests avec succès. Ce résultat ne mesure pas à lui seul la couverture et ne prouve pas l'absence de défaut. Les exemples sont des appels explicatifs, pas des transactions à envoyer sur un réseau réel.
 
-Sources immuables : [ClaimPay.sol](https://github.com/razel-dev/claimpay/blob/ce36ef530f75f530ab112baa1648618de3076d56/contracts/src/ClaimPay.sol) · [MockUSDC.sol](https://github.com/razel-dev/claimpay/blob/ce36ef530f75f530ab112baa1648618de3076d56/contracts/src/mocks/MockUSDC.sol) · [Tests ClaimPay](https://github.com/razel-dev/claimpay/blob/ce36ef530f75f530ab112baa1648618de3076d56/contracts/test/ClaimPay.t.sol) · [Tests MockUSDC](https://github.com/razel-dev/claimpay/blob/ce36ef530f75f530ab112baa1648618de3076d56/contracts/test/MockUSDC.t.sol).
+Sources immuables : [ClaimPay.sol](https://github.com/razel-dev/claimpay/blob/538bf829c038c6bfdabde77db4e542abb3d4715f/contracts/src/ClaimPay.sol) · [MockUSDC.sol](https://github.com/razel-dev/claimpay/blob/538bf829c038c6bfdabde77db4e542abb3d4715f/contracts/src/mocks/MockUSDC.sol) · [Tests ClaimPay](https://github.com/razel-dev/claimpay/blob/538bf829c038c6bfdabde77db4e542abb3d4715f/contracts/test/ClaimPay.t.sol) · [Tests MockUSDC](https://github.com/razel-dev/claimpay/blob/538bf829c038c6bfdabde77db4e542abb3d4715f/contracts/test/MockUSDC.t.sol) · [Test d’isolation entre accords](https://github.com/razel-dev/claimpay/blob/538bf829c038c6bfdabde77db4e542abb3d4715f/contracts/test/ClaimPayIsolation.t.sol).
 
 ## Lire le modèle
 
@@ -33,13 +33,15 @@ Les descriptions sont publiques. Les coordonnées personnelles et les pièces co
 
 **Dans cet ordre :**
 
-1. Prestataire non nul et distinct du client, sinon `InvalidProvider()`.
-2. Si un tiers est renseigné, il doit être distinct du client et du prestataire, sinon `InvalidArbiter()`.
+1. Prestataire non nul et distinct du client **et de l’adresse de cette instance de ClaimPay** (`address(this)`), sinon `InvalidProvider()`.
+2. Si un tiers est renseigné, il doit être distinct du client, du prestataire **et de cette instance de ClaimPay**, sinon `InvalidArbiter()`. `address(0)` reste le choix explicite « sans tiers ».
 3. Au moins une description, sinon `EmptyMilestones()` ; tableaux de même longueur, sinon `MilestoneDataMismatch()`.
 4. Pour chaque indice, description non vide en octets (`EmptyMilestoneDescription(i)`), puis montant non nul (`InvalidMilestoneAmount(i)`). Les montants sont additionnés ; un dépassement d'entier annule la transaction. Aucun contrôle des espaces, du contenu rédactionnel ni de la valeur économique.
 5. `safeTransferFrom(client, ClaimPay, total)` prélève les fonds **avant** la création des entrées. Un échec de l'appel au jeton fait échouer la transaction ; pas d'accord créé à moitié. L'implémentation ne compare pas le solde reçu au montant annoncé : utiliser pour la démonstration le jeton exact prévu, pas un jeton à frais.
 6. Incrémente `agreementCount`, attribue cet identifiant, écrit les trois rôles et le statut `Active`, puis ajoute chaque jalon `Pending` avec son propre montant.
 7. Émet `AgreementCreated(id, client, provider, arbiter, nombre)` et renvoie `id`. Le journal ERC-20 du transfert appartient au jeton, pas à ClaimPay.
+
+**Pourquoi ces deux exclusions ?** Le prestataire doit pouvoir soumettre personnellement un jalon ; le tiers désigné doit pouvoir appeler `resolveDispute`. Cette instance de ClaimPay ne dispose d’aucune méthode pour agir en son propre nom dans ces rôles. Confondre son adresse avec celle d’un participant pourrait immobiliser les fonds. Ces contrôles interviennent avant le prélèvement : en cas de refus, les soldes, l’autorisation ERC-20 et le compteur d’accords restent inchangés. Cela n’interdit pas tous les portefeuilles de type contrat. Tests : `testRevertWhenProviderIsClaimPay`, `testRevertWhenArbiterIsClaimPay`.
 
 **Exemple :** `createAgreement(marc, address(0), ["Maquette", "Integration"], [400_000_000, 600_000_000])`. Depuis Angular, après confirmation de la transaction, lire l'identifiant dans `AgreementCreated` ; le hash de transaction n'est pas l'identifiant d'accord. Aucun plafond explicite de jalons ; les deux boucles et les écritures consomment du gaz. Tests : `testCreateAgreementTransfersTotalMilestoneAmount`, `testRevertWhenAllowanceIsInsufficient`, `testRevertWhenBalanceIsInsufficient`.
 
@@ -146,6 +148,10 @@ Lectures et écritures publiques héritées utiles à la démo (elles s'appellen
 | `approve(spender, amount)` | L'appelant autorise par exemple ClaimPay à prélever la somme des jalons. Émet `Approval` ; ne paie pas Marc et ne valide pas un jalon. |
 | `transfer(to, amount)` | Déplace des jetons du solde de l'appelant au destinataire. Un envoi manuel à ClaimPay ne crée ni accord ni jalon. |
 | `transferFrom(from, to, amount)` | Déplace les jetons dans la limite de l'autorisation ; c'est l'opération employée au financement, via SafeERC20. Solde ou autorisation insuffisants peuvent faire échouer l'appel. |
+
+## Comment vérifie-t-on que deux accords restent indépendants ?
+
+`testFuzzSettlementIsolatedAcrossAgreements` fait varier les deux montants déposés par le même client. Les accords ont des prestataires distincts, mais utilisent tous deux le jalon d’indice `0`. Après paiement du premier prestataire, le premier accord est terminé ; le second reste actif et contesté, sa proposition de remboursement existe toujours et le contrat conserve exactement son montant dans ce scénario. Après acceptation du remboursement, seul le client reçoit ce montant. La CI citée en tête a exécuté ce scénario sur 256 paires de montants ; il ne s’agit pas d’une preuve pour toutes les séquences possibles.
 
 ## Trois choses à pouvoir expliquer à l'oral
 

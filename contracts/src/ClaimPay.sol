@@ -125,16 +125,23 @@ contract ClaimPay {
         paymentToken = IERC20(paymentTokenAddress);
     }
 
+    /// @notice Crée un accord et dépose en une seule fois le montant total des jalons.
+    /// @dev Les rôles sont validés avant tout prélèvement. ClaimPay ne peut pas agir comme prestataire ou tiers.
+    /// @param provider Prestataire, distinct du client, de l'adresse nulle et de ClaimPay.
+    /// @param arbiter Tiers distinct des parties et de ClaimPay, ou adresse nulle pour un accord sans tiers.
+    /// @param descriptions Descriptions non vides des jalons, dans l'ordre de leurs indices.
+    /// @param amounts Montants strictement positifs, en unités brutes du jeton, un par description.
+    /// @return agreementId Identifiant de l'accord créé après le dépôt.
     function createAgreement(
         address provider,
         address arbiter,
         string[] calldata descriptions,
         uint256[] calldata amounts
     ) external returns (uint256 agreementId) {
-        if (provider == address(0) || provider == msg.sender) {
+        if (provider == address(0) || provider == msg.sender || provider == address(this)) {
             revert InvalidProvider();
         }
-        if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider)) {
+        if (arbiter != address(0) && (arbiter == msg.sender || arbiter == provider || arbiter == address(this))) {
             revert InvalidArbiter();
         }
         if (descriptions.length == 0) {
